@@ -213,11 +213,12 @@ export class Player {
 
     // Aim point: build a forward vector that respects BOTH yaw and pitch so
     // the camera always frames the player correctly at any look angle.
+    const CAM_AIM_DIST = 30;
     const cosPitch = Math.cos(this.pitch);
     const aimDir = new THREE.Vector3(
-      -Math.sin(this.yaw) * cosPitch * 30,
-       Math.sin(this.pitch)            * 30,
-      -Math.cos(this.yaw) * cosPitch * 30
+      -Math.sin(this.yaw) * cosPitch  * CAM_AIM_DIST,
+       Math.sin(this.pitch)            * CAM_AIM_DIST,
+      -Math.cos(this.yaw) * cosPitch  * CAM_AIM_DIST
     );
     this.camera.lookAt(playerPos.clone().add(aimDir));
   }
