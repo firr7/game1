@@ -90,6 +90,7 @@ export class Player {
     this.body.addShape(new CANNON.Sphere(0.55));
     this.body.position.set(0, 3, 0);
     this.body.fixedRotation = true;
+    this.body.allowSleep = false; // prevent body from sleeping so velocity changes always apply
     this.body.updateMassProperties();
     this.phys.addBody(this.body);
 
@@ -97,8 +98,10 @@ export class Player {
     this._groundTimer = 0;
     this.body.addEventListener('collide', (e) => {
       const contact = e.contact;
-      const normal  = contact.ni;
-      if (normal.y > 0.5) {
+      // ni points from bi toward bj; negate when this body is bi so we always get
+      // the normal pointing away from the surface and toward the player.
+      const normalY = (contact.bi === this.body) ? -contact.ni.y : contact.ni.y;
+      if (normalY > 0.5) {
         this._groundTimer = 0.18; // 180 ms grace window
       }
     });
@@ -208,11 +211,15 @@ export class Player {
 
     this.camera.position.copy(playerPos).add(offset);
 
-    // Aim point: slightly right, in front at same height
-    const aimDir = new THREE.Vector3(0.15, 0, -30);
-    aimDir.applyQuaternion(new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(0,1,0), this.yaw
-    ));
+    // Aim point: build a forward vector that respects BOTH yaw and pitch so
+    // the camera always frames the player correctly at any look angle.
+    const CAM_AIM_DIST = 30;
+    const cosPitch = Math.cos(this.pitch);
+    const aimDir = new THREE.Vector3(
+      -Math.sin(this.yaw) * cosPitch  * CAM_AIM_DIST,
+       Math.sin(this.pitch)            * CAM_AIM_DIST,
+      -Math.cos(this.yaw) * cosPitch  * CAM_AIM_DIST
+    );
     this.camera.lookAt(playerPos.clone().add(aimDir));
   }
 
