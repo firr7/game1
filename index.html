@@ -1,1 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#1a2e1a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>ZombieStrike 3D</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="icon" href="icons/icon-192.png"/>
 
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    #c { display: block; width: 100%; height: 100%; }
+
+    #overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #eee; font-family: 'Segoe UI', sans-serif; z-index: 100;
+    }
+    #overlay h1 { font-size: clamp(2rem,6vw,4rem); color: #4caf50; text-shadow: 0 0 20px #4caf5088; letter-spacing: 4px; }
+    #overlay p  { margin-top: 12px; font-size: 1.1rem; color: #aaa; }
+    #overlay .controls { margin-top: 24px; font-size: 0.9rem; color: #888; line-height: 1.9; text-align: center; }
+    #startBtn {
+      margin-top: 36px; padding: 14px 48px; font-size: 1.2rem; border: 2px solid #4caf50;
+      background: transparent; color: #4caf50; cursor: pointer; border-radius: 4px;
+      letter-spacing: 2px; transition: all .2s;
+    }
+    #startBtn:hover { background: #4caf50; color: #000; }
+
+    #hud {
+      position: fixed; inset: 0; pointer-events: none; z-index: 10;
+      font-family: 'Segoe UI', sans-serif; color: #fff;
+    }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+      transform: translate(-50%, -50%);
+    }
+    #crosshair::before, #crosshair::after {
+      content: ''; position: absolute; background: rgba(255,255,255,0.85);
+    }
+    #crosshair::before { width: 2px; height: 20px; left: 9px; top: 0; }
+    #crosshair::after  { width: 20px; height: 2px; left: 0; top: 9px; }
+
+    #bars { position: absolute; bottom: 24px; left: 20px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bar-label { font-size: 11px; width: 60px; color: #ccc; text-transform: uppercase; letter-spacing: 1px; }
+    .bar-bg { width: 160px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); }
+    .bar-fill { height: 100%; border-radius: 5px; transition: width .1s; }
+    #health-fill  { background: linear-gradient(90deg,#e53935,#ef9a9a); width: 100%; }
+    #stamina-fill { background: linear-gradient(90deg,#1e88e5,#90caf9); width: 100%; }
+
+    #ammo {
+      position: absolute; bottom: 24px; right: 20px;
+      text-align: right; text-shadow: 1px 1px 4px #000;
+    }
+    #ammo-current { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+    #ammo-reserve { font-size: 1.1rem; color: #aaa; }
+    #weapon-name  { font-size: 0.85rem; color: #4caf50; letter-spacing: 2px; }
+    #no-weapon    { font-size: 1rem; color: #888; font-style: italic; }
+
+    #stats { position: absolute; top: 16px; right: 20px; text-align: right; text-shadow: 1px 1px 4px #000; }
+    #kills { font-size: 1.3rem; color: #ff7043; }
+
+    #minimap {
+      position: absolute; bottom: 24px; right: 170px;
+      width: 140px; height: 140px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-radius: 50%; overflow: hidden;
+      background: rgba(0,0,0,0.45);
+    }
+    #minimap-canvas { width: 140px; height: 140px; }
+
+    #killfeed { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
+    .kill-msg {
+      background: rgba(0,0,0,0.6); padding: 4px 14px; margin-bottom: 4px;
+      border-radius: 3px; font-size: 0.85rem; color: #ff7043; animation: fadeout 2.5s forwards;
+    }
+    @keyframes fadeout { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+    #pickup-prompt {
+      position: absolute; bottom: 36%; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.65); border: 1px solid #4caf50;
+      color: #4caf50; padding: 8px 20px; border-radius: 4px;
+      font-size: 0.95rem; display: none;
+    }
+
+    #wave-info { position: absolute; top: 16px; left: 20px; }
+    #wave-text  { font-size: 1rem; color: #ffb300; }
+    #enemy-count { font-size: 0.85rem; color: #aaa; }
+
+    #gameover {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; font-family: 'Segoe UI', sans-serif; z-index: 200;
+    }
+    #gameover h2  { font-size: 3rem; color: #e53935; }
+    #gameover p   { margin-top: 12px; color: #aaa; }
+    #restartBtn   {
+      margin-top: 32px; padding: 12px 40px; font-size: 1.1rem; border: 2px solid #4caf50;
+      background: transparent; color: #4caf50; cursor: pointer; border-radius: 4px; letter-spacing: 2px;
+    }
+    #restartBtn:hover { background: #4caf50; color: #000; }
+
+    #reload-flash {
+      position: absolute; bottom: 80px; right: 20px;
+      color: #ffb300; font-size: 0.85rem; display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="overlay">
+    <h1>&#9760; ZOMBIE STRIKE</h1>
+    <p>3D Open-World TPS &mdash; Forest &amp; Village</p>
+    <div class="controls">
+      <strong>WASD</strong> Move &nbsp;|&nbsp; <strong>Mouse</strong> Look &nbsp;|&nbsp;
+      <strong>Space</strong> Jump &nbsp;|&nbsp; <strong>Shift</strong> Sprint<br/>
+      <strong>LMB</strong> Shoot &nbsp;|&nbsp; <strong>R</strong> Reload &nbsp;|&nbsp;
+      <strong>E</strong> Pick up Weapon
+    </div>
+    <button id="startBtn">CLICK TO PLAY</button>
+  </div>
+
+  <div id="hud" style="display:none">
+    <div id="crosshair"></div>
+    <div id="bars">
+      <div class="bar-row">
+        <span class="bar-label">Health</span>
+        <div class="bar-bg"><div id="health-fill" class="bar-fill"></div></div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Stamina</span>
+        <div class="bar-bg"><div id="stamina-fill" class="bar-fill"></div></div>
+      </div>
+    </div>
+    <div id="ammo">
+      <div id="no-weapon">[ Unarmed ]</div>
+      <div id="armed" style="display:none">
+        <div id="weapon-name"></div>
+        <div id="ammo-current">--</div>
+        <div id="ammo-reserve">/ --</div>
+      </div>
+    </div>
+    <div id="minimap"><canvas id="minimap-canvas" width="140" height="140"></canvas></div>
+    <div id="stats"><div id="kills">Kills: 0</div></div>
+    <div id="wave-info">
+      <div id="wave-text">Wave 1</div>
+      <div id="enemy-count">Enemies: 0</div>
+    </div>
+    <div id="killfeed"></div>
+    <div id="pickup-prompt">Press <strong>E</strong> to pick up weapon</div>
+    <div id="reload-flash">Reloading...</div>
+  </div>
+
+  <div id="gameover">
+    <h2>YOU DIED</h2>
+    <p id="final-score"></p>
+    <button id="restartBtn">RESTART</button>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
