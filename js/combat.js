@@ -83,8 +83,9 @@ class EquippedWeapon {
     this._reloadTimer   = 0;
   }
 
-  canFire()  { return this.ammo > 0 && !this.reloading && this._fireCooldown <= 0; }
-  isEmpty()  { return this.ammo === 0 && this.reserve === 0; }
+  canFire()    { return this.ammo > 0 && !this.reloading && this._fireCooldown <= 0; }
+  isEmpty()    { return this.ammo === 0 && this.reserve === 0; }
+  getMaxAmmo() { return this.pellets > 1 ? 8 : (this.fireRate < 0.15 ? 30 : 12); }
 
   fire() {
     if (!this.canFire()) return false;
@@ -95,7 +96,7 @@ class EquippedWeapon {
   }
 
   startReload() {
-    if (this.reloading || this.reserve === 0 || this.ammo === this.ammo) return;
+    if (this.reloading || this.reserve === 0) return;
     this.reloading     = true;
     this._reloadTimer  = this.reloadTime;
   }
@@ -105,10 +106,7 @@ class EquippedWeapon {
     if (this.reloading) {
       this._reloadTimer -= dt;
       if (this._reloadTimer <= 0) {
-        const needed = (this.ammo < this.damage ? this.damage : 30) - this.ammo;
-        const refill = Math.min(this.reserve, needed < 0 ? 30 : needed);
-        // Reload: fill up to max
-        const maxAmmo = this.pellets > 1 ? 8 : (this.fireRate < 0.15 ? 30 : 12);
+        const maxAmmo = this.getMaxAmmo();
         const fill    = Math.min(this.reserve, maxAmmo - this.ammo);
         this.ammo    += fill;
         this.reserve -= fill;
@@ -153,10 +151,9 @@ export class CombatSystem {
     });
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyR' && this.equippedWeapon && !this.equippedWeapon.reloading) {
-        if (this.equippedWeapon.ammo < (this.equippedWeapon.pellets > 1 ? 8 : 30)) {
+        const maxAmmo = this.equippedWeapon.getMaxAmmo();
+        if (this.equippedWeapon.ammo < maxAmmo) {
           this.equippedWeapon.startReload();
-          this.equippedWeapon.reloading = true;
-          this.equippedWeapon._reloadTimer = this.equippedWeapon.reloadTime;
         }
       }
       if (e.code === 'KeyE' && this.nearbyWeapon) {

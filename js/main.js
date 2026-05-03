@@ -67,12 +67,13 @@ let gameOver    = false;
 
 function initGame() {
   // Clear old scene objects if restarting
-  scene.children = scene.children.filter(
-    c => c instanceof THREE.AmbientLight ||
-         c instanceof THREE.DirectionalLight ||
-         c instanceof THREE.HemisphereLight ||
-         c === camera
+  const toRemove = scene.children.filter(
+    c => !(c instanceof THREE.AmbientLight) &&
+         !(c instanceof THREE.DirectionalLight) &&
+         !(c instanceof THREE.HemisphereLight) &&
+         c !== camera
   );
+  for (const obj of toRemove) scene.remove(obj);
   physWorld.bodies.slice().forEach(b => physWorld.removeBody(b));
 
   world    = new World(scene, physWorld);

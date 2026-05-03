@@ -75,7 +75,9 @@ export class Player {
     group.add(armL, armR);
 
     group.castShadow = true;
-    this.mesh = group;
+    this.mesh  = group;
+    this._legL = legL;
+    this._legR = legR;
     this.scene.add(group);
   }
 
@@ -91,12 +93,13 @@ export class Player {
     this.body.updateMassProperties();
     this.phys.addBody(this.body);
 
-    // Ground detection via contact
+    // Coyote-time ground detection: collision sets a grace-period timer
+    this._groundTimer = 0;
     this.body.addEventListener('collide', (e) => {
       const contact = e.contact;
       const normal  = contact.ni;
       if (normal.y > 0.5) {
-        this._onGround = true;
+        this._groundTimer = 0.18; // 180 ms grace window
       }
     });
   }
@@ -132,12 +135,8 @@ export class Player {
     if (this.isDead) return;
 
     this._jumpCooldown = Math.max(0, this._jumpCooldown - dt);
-
-    // Ground check reset each frame — re-set by collision event
-    // But we also do a velocity check:
-    if (Math.abs(this.body.velocity.y) > 0.5) {
-      // Might not be on ground — collision event will set it back
-    }
+    this._groundTimer  = Math.max(0, this._groundTimer - dt);
+    this._onGround     = this._groundTimer > 0;
 
     // Movement direction
     const isSprinting = this._keys['ShiftLeft'] || this._keys['ShiftRight'];
@@ -168,7 +167,7 @@ export class Player {
 
     const speed = canSprint ? SPRINT_SPEED : WALK_SPEED;
 
-    // Apply velocity (preserve Y for gravity)
+    // Apply velocity (preserve Y for gravity/jump)
     this.body.velocity.x = dir.x * speed;
     this.body.velocity.z = dir.z * speed;
 
@@ -185,23 +184,15 @@ export class Player {
     // Leg animation (simple bob)
     if (moving) {
       const t = performance.now() / 1000;
-      const legL = this.mesh.children[3];
-      const legR = this.mesh.children[4];
       const freq = canSprint ? 8 : 5;
-      if (legL && legR) {
-        legL.rotation.x =  Math.sin(t * freq) * 0.5;
-        legR.rotation.x = -Math.sin(t * freq) * 0.5;
+      if (this._legL && this._legR) {
+        this._legL.rotation.x =  Math.sin(t * freq) * 0.5;
+        this._legR.rotation.x = -Math.sin(t * freq) * 0.5;
       }
     }
 
     // Update camera
     this._updateCamera();
-
-    // Reset ground each frame — collision event re-enables it
-    // Small epsilon to handle micro-bounces
-    if (this.body.velocity.y < -0.1) {
-      this._onGround = false;
-    }
   }
 
   _updateCamera() {

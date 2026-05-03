@@ -1,11 +1,9 @@
 // js/world.js — Environment generation (Forest + Village biomes)
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { createRNG } from './rng.js';
 
-const rng = (() => {
-  let s = 42;
-  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
-})();
+const rng = createRNG(42);
 
 export class World {
   constructor(scene, physicsWorld) {

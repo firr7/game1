@@ -9,6 +9,7 @@ const ASSETS = [
   './js/enemies.js',
   './js/combat.js',
   './js/hud.js',
+  './js/rng.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
@@ -36,7 +37,7 @@ self.addEventListener('fetch', (e) => {
     caches.match(e.request).then((cached) => {
       if (cached) return cached;
       return fetch(e.request).then((response) => {
-        if (!response || response.status !== 200 || response.type === 'opaque') {
+        if (!response || (response.status !== 200 && response.type !== 'opaque')) {
           return response;
         }
         const clone = response.clone();

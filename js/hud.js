@@ -32,7 +32,7 @@ export class HUD {
     } else if (hp < 50) {
       this._healthFill.style.background = 'linear-gradient(90deg,#ff6f00,#ffcc02)';
     } else {
-      this._healthFill.style.background = 'linear-gradient(90deg,#e53935,#ef9a9a)';
+      this._healthFill.style.background = 'linear-gradient(90deg,#2e7d32,#66bb6a)';
     }
 
     // Stamina bar

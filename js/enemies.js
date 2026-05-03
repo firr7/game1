@@ -1,6 +1,7 @@
 // js/enemies.js — Zombie AI with Patrol / Chase / Attack state machine
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { createRNG } from './rng.js';
 
 const PATROL_SPEED  = 2.5;
 const CHASE_SPEED   = 5.0;
@@ -10,10 +11,7 @@ const ATTACK_DAMAGE = 12;
 const ATTACK_CD     = 1.2;   // seconds between attacks
 const ZOMBIE_HP     = 60;
 
-const rng = (() => {
-  let s = 123;
-  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
-})();
+const rng = createRNG(123);
 
 // Simple seeded random vector for patrol waypoints
 function randVec(cx, cz, radius) {
@@ -86,7 +84,9 @@ class Zombie {
 
     group.castShadow = true;
     group.position.copy(pos);
-    this.mesh = group;
+    this.mesh  = group;
+    this._legL = legL2;
+    this._legR = legR2;
     this.scene.add(group);
 
     // Health bar (sprite-like plane)
@@ -192,11 +192,9 @@ class Zombie {
     // Walk animation
     const t = performance.now() / 1000;
     const speed = this.state === 'chase' ? 8 : 4;
-    const legL = this.mesh.children[7];
-    const legR = this.mesh.children[8];
-    if (legL && legR) {
-      legL.rotation.x =  Math.sin(t * speed) * 0.4;
-      legR.rotation.x = -Math.sin(t * speed) * 0.4;
+    if (this._legL && this._legR) {
+      this._legL.rotation.x =  Math.sin(t * speed) * 0.4;
+      this._legR.rotation.x = -Math.sin(t * speed) * 0.4;
     }
 
     // HP bar always faces camera (billboard)
